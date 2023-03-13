@@ -51,7 +51,3 @@ tx.addInput({
 // });
 // Outputs
 tx.addOutput({ amount: 123n });
-tx.updateOutput(0, { amount: '1' });
-tx.updateOutput(0, { amount: 1 });
-tx.addOutput({ amount: '123' });
-tx.addOutput({ amount: 123 });

@@ -14,6 +14,24 @@ const sha256x2 = (...msgs) => sha256(sha256(concat(...msgs)));
 const concat = P.concatBytes;
 // Make base58check work
 export const base58check = _b58(sha256);
+export function cloneDeep(obj) {
+    if (Array.isArray(obj))
+        return obj.map((i) => cloneDeep(i));
+    // slice of nodejs Buffer doesn't copy
+    else if (obj instanceof Uint8Array)
+        return Uint8Array.from(obj);
+    // immutable
+    else if (['number', 'bigint', 'boolean', 'string', 'undefined'].includes(typeof obj))
+        return obj;
+    // null is object
+    else if (obj === null)
+        return obj;
+    // should be last, so it won't catch other types
+    else if (typeof obj === 'object') {
+        return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, cloneDeep(v)]));
+    }
+    throw new Error(`cloneDeep: unknown type=${obj} (${typeof obj})`);
+}
 var PubT;
 (function (PubT) {
     PubT[PubT["ecdsa"] = 0] = "ecdsa";
@@ -1607,8 +1625,8 @@ function validateOpts(opts) {
 export class Transaction {
     constructor(opts = {}) {
         this.global = {};
-        this.inputs = [];
-        this.outputs = [];
+        this.inputs = []; // use getInput()
+        this.outputs = []; // use getOutput()
         const _opts = (this.opts = validateOpts(opts));
         // Merge with global structure of PSBTv2
         if (_opts.lockTime !== DEFAULT_LOCKTIME)
@@ -1873,6 +1891,13 @@ export class Transaction {
         if (!Number.isSafeInteger(idx) || 0 > idx || idx >= this.inputs.length)
             throw new Error(`Wrong input index=${idx}`);
     }
+    getInput(idx) {
+        this.checkInputIdx(idx);
+        return cloneDeep(this.inputs[idx]);
+    }
+    get inputsLength() {
+        return this.inputs.length;
+    }
     // Modification
     normalizeInput(i, cur, allowedFields) {
         let { nonWitnessUtxo, txid } = i;
@@ -1926,6 +1951,13 @@ export class Transaction {
     checkOutputIdx(idx) {
         if (!Number.isSafeInteger(idx) || 0 > idx || idx >= this.outputs.length)
             throw new Error(`Wrong output index=${idx}`);
+    }
+    getOutput(idx) {
+        this.checkInputIdx(idx);
+        return cloneDeep(this.outputs[idx]);
+    }
+    get outputsLength() {
+        return this.outputs.length;
     }
     normalizeOutput(o, cur, allowedFields) {
         let { amount, script } = o;
